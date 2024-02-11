@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "pokemon-classifier-using-vision-transformer"
+version = "0.1.0"
+description = ""
+authors = ["nikhil-chigali <nikhil.chigali@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+numpy = "^1.26.4"
+torch = {version = "^2.2.0+cu121", source = "pytorch-gpu-src"}
+torchvision = {version = "^0.17.0+cu121", source = "pytorch-gpu-src"}
+torchaudio = {version = "^2.2.0+cu121", source = "pytorch-gpu-src"}
+python-dotenv = "^1.0.1"
+ml-collections = "^0.1.1"
+tqdm = "^4.66.1"
+ipywidgets = "^8.1.2"
+matplotlib = "^3.8.2"
+pyyaml = "^6.0.1"
+scikit-learn = "^1.4.0"
+
+
+[[tool.poetry.source]]
+name = "pytorch-gpu-src"
+url = "https://download.pytorch.org/whl/cu121"
+priority = "explicit"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.1.1"
+pytest = "^8.0.0"
+ipykernel = "^6.29.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

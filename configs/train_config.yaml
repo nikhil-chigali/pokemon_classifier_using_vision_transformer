@@ -1,0 +1,12 @@
+experiment: 
+    meta:
+        name: TestExperiment
+    model:
+        family: ViT
+        n_layers: 10
+    training:
+        device: 'cuda'
+        seed: 42
+        batch_size: 8
+        epochs: 50
+        eta: 1e-3
