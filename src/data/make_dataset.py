@@ -38,6 +38,7 @@ def make_dataset():
 
     data_config.class_to_idx = dataset.class_to_idx
     data_config.idx_to_class = dataset.classes
+    data_config.num_classes = len(dataset.classes)
 
     train_idx, test_idx = train_test_split(
         np.arange(len(dataset)),
@@ -60,14 +61,14 @@ def make_dataset():
         "val": val_idx.tolist(),
         "test": test_idx.tolist(),
     }
-    with open(path_config.indices_file, "w") as f:
+    with open(path_config.indices_file, "w", encoding="utf-8") as f:
         json.dump(indices, f, indent=4)
 
     classes = {
         "class_to_idx": dataset.class_to_idx,
         "idx_to_class": dataset.classes,
     }
-    with open(path_config.classes_file, "w") as f:
+    with open(path_config.classes_file, "w", encoding="utf-8") as f:
         json.dump(classes, f, indent=4)
 
 
@@ -77,7 +78,7 @@ def get_dataset(train=True):
         root=path_config.dataset_path,
         transform=get_transforms(),
     )
-    with open(path_config.indices_file, "r") as f:
+    with open(path_config.indices_file, "r", encoding="utf-8") as f:
         indices = json.load(f)
     if train:
         train_set = Subset(dataset, indices["train"])

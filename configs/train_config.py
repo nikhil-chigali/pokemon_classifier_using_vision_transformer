@@ -5,7 +5,11 @@ import os
 
 
 def get_train_config():
-    with open(os.path.join(os.path.dirname(__file__), "train_config.yaml"), "r") as f:
+    with open(
+        os.path.join(os.path.dirname(__file__), "train_config.yaml"),
+        "r",
+        encoding="utf-8",
+    ) as f:
         cfg_dict = yaml.safe_load(f.read())
 
     config = ConfigDict(cfg_dict["experiment"])
