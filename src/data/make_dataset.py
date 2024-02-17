@@ -14,11 +14,13 @@ class ToDevice:
         self.device = device
 
     def __call__(self, tensor):
+        if not isinstance(tensor, torch.Tensor):
+            tensor = torch.Tensor([tensor])
         return tensor.to(self.device)
 
 
 def get_transforms():
-    pipeline = v2.Compose(
+    img_transform = v2.Compose(
         [
             v2.PILToTensor(),
             v2.Resize(data_config.img_size),
@@ -28,7 +30,18 @@ def get_transforms():
             ToDevice(train_config.training.device),
         ]
     )
-    return pipeline
+    target_transform = ToDevice(train_config.training.device)
+    return img_transform, target_transform
+
+
+def collate_fn(data):
+    data = list(zip(*data))
+    images = data[0]
+    targets = data[1]
+    images_tensor = torch.stack(images)
+    targets_tensor = torch.stack(targets).squeeze()
+
+    return images_tensor, targets_tensor
 
 
 def make_dataset():
@@ -74,9 +87,12 @@ def make_dataset():
 
 def get_dataset(train=True):
     make_dataset()
+    img_transform, target_transform = get_transforms()
+
     dataset = ImageFolder(
         root=path_config.dataset_path,
-        transform=get_transforms(),
+        transform=img_transform,
+        target_transform=target_transform,
     )
     with open(path_config.indices_file, "r", encoding="utf-8") as f:
         indices = json.load(f)
@@ -94,5 +110,7 @@ def get_dataloader(dataset, train=True):
         dataset,
         batch_size=train_config.training.batch_size,
         shuffle=train,
+        drop_last=True,
+        collate_fn=collate_fn,
     )
     return dataloader

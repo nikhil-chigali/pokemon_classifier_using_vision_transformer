@@ -1,1 +1,1 @@
-from .ViT import ViT
+from .vit_model import ViT

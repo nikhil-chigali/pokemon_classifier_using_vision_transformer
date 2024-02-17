@@ -1,5 +1,5 @@
-from ml_collections import ConfigDict
 import os
+from ml_collections import ConfigDict
 
 
 def get_path_config():
@@ -11,4 +11,5 @@ def get_path_config():
     config.dataset_path = os.path.join(config.data_path, "raw\\PokemonData")
     config.classes_file = os.path.join(config.data_path, "utils\\classes.json")
     config.indices_file = os.path.join(config.data_path, "utils\\indices.json")
+    config.model_ckpt_path = os.path.join(config.proj_path, "models")
     return config
