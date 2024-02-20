@@ -1,19 +1,22 @@
-import torch
+import os
 from ml_collections import ConfigDict
 import yaml
-import os
 
 
 def get_train_config():
+    config_file = os.path.join(
+        os.path.abspath(
+            os.path.join(os.path.dirname(__file__), os.pardir),
+        ),
+        "train_config.yaml",
+    )
     with open(
-        os.path.join(os.path.dirname(__file__), "train_config.yaml"),
+        config_file,
         "r",
         encoding="utf-8",
     ) as f:
         cfg_dict = yaml.safe_load(f.read())
 
-    config = ConfigDict(cfg_dict["experiment"])
-    if config.training.device == "cuda" and not torch.cuda.is_available():
-        config.training.device = "cpu"
+    config = ConfigDict(cfg_dict)
 
     return config

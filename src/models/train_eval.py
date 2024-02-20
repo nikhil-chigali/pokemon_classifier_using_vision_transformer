@@ -1,19 +1,11 @@
-"""
-TODO:: Implement logger [Loguru]
-TODO:: Incorporate PyTorch TQDM
-TODO:: Test the class
-"""
-
 import os
 import numpy as np
 
 import torch
-import torch.nn as nn
-from torch.optim import Adam
 from torchmetrics.classification import MulticlassAccuracy
 
 
-class TrainEval:
+class Trainer:
     def __init__(
         self,
         train_loader,
@@ -21,6 +13,8 @@ class TrainEval:
         test_loader,
         model,
         epochs,
+        criterion,
+        optimizer,
         learning_rate,
         ckpt_path,
         device="cpu",
@@ -34,17 +28,14 @@ class TrainEval:
         self.learning_rate = learning_rate
         self.ckpt_path = ckpt_path
 
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = criterion
         self.mca = MulticlassAccuracy(
             num_classes=self.num_classes,
             average=None,
         )
         self.mca.to(device)
 
-        self.optimizer = Adam(
-            params=self.model.parameters(),
-            lr=self.learning_rate,
-        )
+        self.optimizer = optimizer
         self.history = {
             "train_loss": [],
             "val_loss": [],
