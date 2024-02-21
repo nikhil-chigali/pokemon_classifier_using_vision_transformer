@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
@@ -5,7 +6,6 @@ from torch.utils.data import Subset, DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import v2
 
-import json
 from configs import path_config, data_config
 
 
@@ -16,6 +16,7 @@ class ToDevice:
     def __call__(self, tensor):
         if not isinstance(tensor, torch.Tensor):
             tensor = torch.Tensor([tensor])
+            tensor = tensor.type(torch.LongTensor)
         return tensor.to(self.device)
 
 
