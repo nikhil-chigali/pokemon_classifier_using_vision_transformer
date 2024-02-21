@@ -1,19 +1,12 @@
-"""
-TODO:: Implement logger [Loguru]
-TODO:: Incorporate PyTorch TQDM
-TODO:: Test the class
-"""
-
 import os
 import numpy as np
 
 import torch
-import torch.nn as nn
-from torch.optim import Adam
 from torchmetrics.classification import MulticlassAccuracy
+from torch.hub import tqdm
 
 
-class TrainEval:
+class Trainer:
     def __init__(
         self,
         train_loader,
@@ -21,8 +14,11 @@ class TrainEval:
         test_loader,
         model,
         epochs,
+        criterion,
+        optimizer,
         learning_rate,
         ckpt_path,
+        logger,
         device="cpu",
     ):
         self.train_loader = train_loader
@@ -33,18 +29,16 @@ class TrainEval:
         self.epochs = epochs
         self.learning_rate = learning_rate
         self.ckpt_path = ckpt_path
+        self.logger = logger
 
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = criterion
         self.mca = MulticlassAccuracy(
             num_classes=self.num_classes,
             average=None,
         )
         self.mca.to(device)
 
-        self.optimizer = Adam(
-            params=self.model.parameters(),
-            lr=self.learning_rate,
-        )
+        self.optimizer = optimizer
         self.history = {
             "train_loss": [],
             "val_loss": [],
@@ -66,13 +60,18 @@ class TrainEval:
         total_acc /= n
         return total_acc
 
-    def train_step(self):
+    def train_step(self, current_epoch):
         epoch_loss = 0.0
         epoch_acc = 0.0
         n = 0.0
         self.model.train()
 
-        for batch in self.train_loader:
+        tk = tqdm(
+            self.train_loader, desc=f"EPOCH[TRAIN] {current_epoch+1}/{self.epochs}"
+        )
+        batch_size = self.train_loader.batch_size
+
+        for t, batch in enumerate(tk):
             images, targets = batch
             n += images.size(0)
 
@@ -85,23 +84,36 @@ class TrainEval:
             epoch_loss += loss.item() * images.size(0)
             epoch_acc += self.mca(logits, targets).sum().item()
 
+            tk.set_postfix(
+                {
+                    "Loss": f"{epoch_loss / (batch_size * (t + 1)):0.02f}",
+                    "Accuracy": f"{epoch_acc / (batch_size * (t + 1)):0.02f}",
+                }
+            )
+
+        self.logger.debug(tk.desc)
         epoch_acc /= n
         epoch_loss /= n
         self.history["train_acc"].append(epoch_acc)
         self.history["train_loss"].append(epoch_loss)
+        self.logger.debug(f"Loss: {epoch_loss:0.02f} | Accuracy: {epoch_acc:0.02f}")
 
-    def eval_step(self, val=True):
+    def eval_step(self, current_epoch, val=True):
         epoch_loss = 0.0
         epoch_acc = 0.0
         n = 0.0
         self.model.eval()
 
         if val:
-            loader = self.val_loader
+            tk = tqdm(
+                self.val_loader, desc=f"EPOCH[VAL] {current_epoch+1}/{self.epochs}"
+            )
+            batch_size = self.val_loader.batch_size
         else:
-            loader = self.test_loader
+            tk = tqdm(self.test_loader, desc="EPOCH[TEST]")
+            batch_size = self.test_loader.batch_size
 
-        for batch in loader:
+        for t, batch in enumerate(tk):
             images, targets = batch
             n += images.size(0)
             with torch.no_grad():
@@ -110,13 +122,20 @@ class TrainEval:
 
                 epoch_loss += loss.item() * images.size(0)
                 epoch_acc += self.mca(logits, targets).sum().item()
+                tk.set_postfix(
+                    {
+                        "Loss": f"{epoch_loss / (batch_size * (t + 1)):0.02f}",
+                        "Accuracy": f"{epoch_acc / (batch_size * (t + 1)):0.02f}",
+                    }
+                )
 
+        self.logger.debug(tk.desc)
         epoch_acc /= n
         epoch_loss /= n
-
         if val:
             self.history["val_acc"].append(epoch_acc)
             self.history["val_loss"].append(epoch_loss)
+            self.logger.debug(f"Loss: {epoch_loss:0.02f} | Accuracy: {epoch_acc:0.02f}")
         else:
             return epoch_loss, epoch_acc
 
@@ -129,9 +148,9 @@ class TrainEval:
         self.history["train_loss"] = []
         self.history["val_acc"] = []
         self.history["val_loss"] = []
-        for _ in range(self.epochs):
-            self.train_step()
-            self.eval_step(val=True)
+        for e in range(self.epochs):
+            self.train_step(e)
+            self.eval_step(e, val=True)
             if self.history["val_loss"][-1] < best_val_loss:
                 best_train_loss = self.history["train_loss"][-1]
                 best_val_loss = self.history["val_loss"][-1]
@@ -139,17 +158,22 @@ class TrainEval:
 
         ckpt_file = os.path.join(
             self.ckpt_path,
-            "ckpt-trainloss_{:0.02f}-valloss_{:0.02f}.pt".format(
-                best_train_loss, best_val_loss
-            ),
+            f"ckpt-trainloss_{best_train_loss:0.02f}-valloss_{best_val_loss:0.02f}.pt",
         )
         torch.save(ckpt_file, best_model_wts)
+
+        self.logger.info(
+            "Saved Trained Model Checkpoint at: {ckpt_file}", ckpt_file=ckpt_file
+        )
+
         self.model.load_state_dict(torch.load(ckpt_file))
+
         train_acc = self.classwise_acc(self.train_loader)
         val_acc = self.classwise_acc(self.val_loader)
+
         return train_acc, val_acc
 
     def test(self):
-        test_loss, test_acc = self.eval_step(val=False)
+        test_loss, test_acc = self.eval_step(-1, val=False)
         classwise_acc = self.classwise_acc(self.test_loader)
         return test_loss, test_acc, classwise_acc

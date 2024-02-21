@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
@@ -5,8 +6,7 @@ from torch.utils.data import Subset, DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import v2
 
-import json
-from configs import path_config, data_config, train_config
+from configs import path_config, data_config
 
 
 class ToDevice:
@@ -16,10 +16,11 @@ class ToDevice:
     def __call__(self, tensor):
         if not isinstance(tensor, torch.Tensor):
             tensor = torch.Tensor([tensor])
+            tensor = tensor.type(torch.LongTensor)
         return tensor.to(self.device)
 
 
-def get_transforms():
+def get_transforms(train_config):
     img_transform = v2.Compose(
         [
             v2.PILToTensor(),
@@ -44,7 +45,7 @@ def collate_fn(data):
     return images_tensor, targets_tensor
 
 
-def make_dataset():
+def make_dataset(train_config):
     dataset = ImageFolder(
         root=path_config.dataset_path,
     )
@@ -85,9 +86,9 @@ def make_dataset():
         json.dump(classes, f, indent=4)
 
 
-def get_dataset(train=True):
-    make_dataset()
-    img_transform, target_transform = get_transforms()
+def get_dataset(train_config, train=True):
+    make_dataset(train_config)
+    img_transform, target_transform = get_transforms(train_config)
 
     dataset = ImageFolder(
         root=path_config.dataset_path,
@@ -105,7 +106,7 @@ def get_dataset(train=True):
         return test_set
 
 
-def get_dataloader(dataset, train=True):
+def get_dataloader(dataset, train_config, train=True):
     dataloader = DataLoader(
         dataset,
         batch_size=train_config.training.batch_size,

@@ -1,0 +1,16 @@
+experiments: 
+    dryrun:
+        model:
+            family: ViT
+            patch_size: 16
+            num_heads: 4
+            latent_dim: 512
+            num_encoders: 4
+        training:
+            seed: 4201
+            device: 'cuda'
+            batch_size: 64
+            epochs: 10
+            learning_rate: 0.001
+            weight_decay: 0.01 
+            dropout: 0
