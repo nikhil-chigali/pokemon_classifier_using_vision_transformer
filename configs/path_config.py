@@ -8,7 +8,9 @@ def get_path_config():
         os.path.join(os.path.dirname(__file__), os.pardir),
     )
     config.data_path = os.path.join(config.proj_path, "data")
-    config.dataset_path = os.path.join(config.data_path, "raw\\PokemonData")
+    config.dataset_path = os.path.join(
+        config.data_path, "raw\\pokemon-images-first-generation17000-files\\pokemon"
+    )
     config.classes_file = os.path.join(config.data_path, "utils\\classes.json")
     config.indices_file = os.path.join(config.data_path, "utils\\indices.json")
     config.logs_dir = os.path.join(config.proj_path, "logs")

@@ -63,17 +63,14 @@ class Trainer:
     def train_step(self, current_epoch):
         epoch_loss = 0.0
         epoch_acc = 0.0
-        n = 0.0
         self.model.train()
 
         tk = tqdm(
             self.train_loader, desc=f"EPOCH[TRAIN] {current_epoch+1}/{self.epochs}"
         )
-        batch_size = self.train_loader.batch_size
 
         for t, batch in enumerate(tk):
             images, targets = batch
-            n += images.size(0)
 
             self.optimizer.zero_grad()
             logits = self.model(images)
@@ -82,18 +79,18 @@ class Trainer:
             self.optimizer.step()
 
             epoch_loss += loss.item() * images.size(0)
-            epoch_acc += self.mca(logits, targets).sum().item()
+            epoch_acc += self.mca(logits, targets).mean().item()
 
             tk.set_postfix(
                 {
-                    "Loss": f"{epoch_loss / (batch_size * (t + 1)):0.02f}",
-                    "Accuracy": f"{epoch_acc / (batch_size * (t + 1)):0.02f}",
+                    "Loss": f"{epoch_loss / (t+1):0.02f}",
+                    "Accuracy": f"{epoch_acc / (t+1):0.02f}",
                 }
             )
 
         self.logger.debug(tk.desc)
-        epoch_acc /= n
-        epoch_loss /= n
+        epoch_acc /= len(self.train_loader)
+        epoch_loss /= len(self.train_loader)
         self.history["train_acc"].append(epoch_acc)
         self.history["train_loss"].append(epoch_loss)
         self.logger.debug(f"Loss: {epoch_loss:0.02f} | Accuracy: {epoch_acc:0.02f}")
@@ -101,42 +98,41 @@ class Trainer:
     def eval_step(self, current_epoch, val=True):
         epoch_loss = 0.0
         epoch_acc = 0.0
-        n = 0.0
         self.model.eval()
 
         if val:
             tk = tqdm(
                 self.val_loader, desc=f"EPOCH[VAL] {current_epoch+1}/{self.epochs}"
             )
-            batch_size = self.val_loader.batch_size
         else:
             tk = tqdm(self.test_loader, desc="EPOCH[TEST]")
-            batch_size = self.test_loader.batch_size
 
         for t, batch in enumerate(tk):
             images, targets = batch
-            n += images.size(0)
             with torch.no_grad():
                 logits = self.model(images)
                 loss = self.criterion(logits, targets)
 
                 epoch_loss += loss.item() * images.size(0)
-                epoch_acc += self.mca(logits, targets).sum().item()
+                epoch_acc += self.mca(logits, targets).mean().item()
                 tk.set_postfix(
                     {
-                        "Loss": f"{epoch_loss / (batch_size * (t + 1)):0.02f}",
-                        "Accuracy": f"{epoch_acc / (batch_size * (t + 1)):0.02f}",
+                        "Loss": f"{epoch_loss / (t + 1):0.02f}",
+                        "Accuracy": f"{epoch_acc / (t + 1):0.02f}",
                     }
                 )
 
         self.logger.debug(tk.desc)
-        epoch_acc /= n
-        epoch_loss /= n
         if val:
+            epoch_acc /= len(self.val_loader)
+            epoch_loss /= len(self.val_loader)
             self.history["val_acc"].append(epoch_acc)
             self.history["val_loss"].append(epoch_loss)
             self.logger.debug(f"Loss: {epoch_loss:0.02f} | Accuracy: {epoch_acc:0.02f}")
         else:
+            epoch_acc /= len(self.test_loader)
+            epoch_loss /= len(self.test_loader)
+            self.logger.debug(f"Loss: {epoch_loss:0.02f} | Accuracy: {epoch_acc:0.02f}")
             return epoch_loss, epoch_acc
 
     def train(self):

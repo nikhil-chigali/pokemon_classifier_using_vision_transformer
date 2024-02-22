@@ -3,7 +3,7 @@ experiments:
         model:
             family: ViT
             patch_size: 16
-            num_heads: 4
+            num_heads: 1
             latent_dim: 512
             num_encoders: 4
         training:
