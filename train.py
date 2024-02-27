@@ -1,7 +1,8 @@
 """
-    TODO:: Implement logger [Loguru]
-    TODO:: Incorporate PyTorch TQDM
-    TODO:: Test the code
+    DONE:: Implement logger [Loguru]
+    DONE:: Incorporate PyTorch TQDM
+    DONE:: Test the code
+    TODO:: Migrate to PyTorch Lightning
     TODO:: Integrate WandB
     TODO:: Build data pipelines to Dagster augment dataset
     TODO:: Integrate MLFlow
@@ -11,10 +12,11 @@
 """
 
 import sys
+import warnings
 from argparse import ArgumentParser
 import torch
 import torch.nn as nn
-from torch.optim import Adam
+import torch.optim as optim
 from loguru import logger
 
 from src.models import ViT, Trainer
@@ -24,6 +26,7 @@ from configs import data_config, train_config, path_config
 
 @logger.catch
 def main():
+    warnings.filterwarnings("ignore")
     parser = ArgumentParser()
     parser.add_argument(
         "--exp_name",
@@ -44,7 +47,7 @@ def main():
     )
     logger.add(
         sys.stderr,
-        format="[{time:YYYY-MM-DD_HH:mm:ss}] || <bold><magenta>"
+        format="[{time:YYYY-MM-DD_HH:mm:ss}] || <bold><magenta>EXP: "
         + args.exp_name
         + "</></bold> | {level} | <lvl>{message}</lvl>",
     )
@@ -60,18 +63,25 @@ def main():
     valloader = get_dataloader(valset, train_cfg, train=True)
     testloader = get_dataloader(testset, train_cfg, train=False)
 
-    logger.debug(f"Trainset: {len(trainset.dataset)}")
-    logger.debug(f"Valset: {len(valset.dataset)}")
-    logger.debug(f"Testset: {len(testset)}")
+    logger.info(f"Trainset: {len(trainset.indices)}")
+    logger.info(f"Valset: {len(valset.indices)}")
+    logger.info(f"Testset: {len(testset)}")
     logger.success("Data loaders instantiated")
     model = ViT(data_cfg=data_config, train_cfg=train_cfg)
+    total_params = sum(param.numel() for param in model.parameters())
+    logger.info(
+        f"Total Parameters: {total_params*1e-6:.2f} M",
+    )
     criterion = nn.CrossEntropyLoss()
-    optimizer = Adam(
+    optimizer = optim.Adam(
         params=model.parameters(),
         lr=train_cfg.training.learning_rate,
         weight_decay=train_cfg.training.weight_decay,
     )
-    logger.success("Model and Optimizer instantiated")
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=0.3, patience=3, min_lr=1e-6
+    )
+    logger.success("Model, Optimizer, and LR_Scheduler instantiated")
     trainer = Trainer(
         trainloader,
         valloader,
@@ -80,7 +90,7 @@ def main():
         train_cfg.training.epochs,
         criterion,
         optimizer,
-        train_cfg.training.learning_rate,
+        scheduler,
         path_config.model_ckpt_path,
         logger,
         train_cfg.training.device,

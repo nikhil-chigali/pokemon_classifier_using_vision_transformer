@@ -16,7 +16,7 @@ class Trainer:
         epochs,
         criterion,
         optimizer,
-        learning_rate,
+        scheduler,
         ckpt_path,
         logger,
         device="cpu",
@@ -27,7 +27,7 @@ class Trainer:
         self.num_classes = len(self.train_loader.dataset.dataset.classes)
         self.model = model
         self.epochs = epochs
-        self.learning_rate = learning_rate
+        self.scheduler = scheduler
         self.ckpt_path = ckpt_path
         self.logger = logger
 
@@ -84,7 +84,7 @@ class Trainer:
             tk.set_postfix(
                 {
                     "Loss": f"{epoch_loss / (t+1):0.02f}",
-                    "Accuracy": f"{epoch_acc / (t+1):0.02f}",
+                    "Accuracy": f"{epoch_acc / (t+1):.04f}",
                 }
             )
 
@@ -93,7 +93,7 @@ class Trainer:
         epoch_loss /= len(self.train_loader)
         self.history["train_acc"].append(epoch_acc)
         self.history["train_loss"].append(epoch_loss)
-        self.logger.debug(f"Loss: {epoch_loss:0.02f} | Accuracy: {epoch_acc:0.02f}")
+        self.logger.debug(f"Loss: {epoch_loss:0.02f} | Accuracy: {epoch_acc:0.04f}")
 
     def eval_step(self, current_epoch, val=True):
         epoch_loss = 0.0
@@ -118,7 +118,7 @@ class Trainer:
                 tk.set_postfix(
                     {
                         "Loss": f"{epoch_loss / (t + 1):0.02f}",
-                        "Accuracy": f"{epoch_acc / (t + 1):0.02f}",
+                        "Accuracy": f"{epoch_acc / (t+1):.04f}",
                     }
                 )
 
@@ -128,11 +128,11 @@ class Trainer:
             epoch_loss /= len(self.val_loader)
             self.history["val_acc"].append(epoch_acc)
             self.history["val_loss"].append(epoch_loss)
-            self.logger.debug(f"Loss: {epoch_loss:0.02f} | Accuracy: {epoch_acc:0.02f}")
+            self.logger.debug(f"Loss: {epoch_loss:0.02f} | Accuracy: {epoch_acc:0.04f}")
         else:
             epoch_acc /= len(self.test_loader)
             epoch_loss /= len(self.test_loader)
-            self.logger.debug(f"Loss: {epoch_loss:0.02f} | Accuracy: {epoch_acc:0.02f}")
+            self.logger.debug(f"Loss: {epoch_loss:0.02f} | Accuracy: {epoch_acc:0.04f}")
             return epoch_loss, epoch_acc
 
     def train(self):
@@ -147,6 +147,7 @@ class Trainer:
         for e in range(self.epochs):
             self.train_step(e)
             self.eval_step(e, val=True)
+            self.scheduler.step(self.history["val_loss"][-1])
             if self.history["val_loss"][-1] < best_val_loss:
                 best_train_loss = self.history["train_loss"][-1]
                 best_val_loss = self.history["val_loss"][-1]
@@ -170,6 +171,7 @@ class Trainer:
         return train_acc, val_acc
 
     def test(self):
+
         test_loss, test_acc = self.eval_step(-1, val=False)
         classwise_acc = self.classwise_acc(self.test_loader)
         return test_loss, test_acc, classwise_acc
